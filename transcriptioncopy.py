@@ -44,17 +44,12 @@ def transcribe_segment(audio_path, start, end):
 
 #     return "\n".join(transcript)
 
-def transcribe_with_speakers(diarization_result, audio_path, output_txt):
+def transcribe_with_speakers(diarization_result, audio_path):
     
     transcript = []
     for start, end, speaker in diarization_result:
         transcribed_text = transcribe_segment(audio_path, start, end)
         transcript.append(f"{speaker} spoke from {start:.1f} to {end:.1f}: {transcribed_text}")
-
-    
-    os.makedirs(os.path.dirname(output_txt), exist_ok=True) 
-    with open(output_txt, "w") as f:
-        f.write("\n".join(transcript))
 
     return transcript
 
@@ -64,4 +59,4 @@ embeddings_path = "speaker_embeddings.npy"
 output_txt = "transcriptions/transcription.txt"
 
 diarization_result = diarize_audio(audio_file, embeddings_path)
-final_transcript = transcribe_with_speakers(diarization_result, audio_file, output_txt)
+final_transcript = transcribe_with_speakers(diarization_result, audio_file)

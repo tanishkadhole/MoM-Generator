@@ -17,11 +17,9 @@ def generate_mom(transcription_text):
     response = client.chat.completions.create(
         model="llama3-8b-8192",
         messages=[
-            {"role": "system", "content": "You are an AI assistant that generates well-structured Minutes of the Meeting (MoM)."},
+            {"role": "system", "content": "You are an AI assistant that generates well-structured Minutes of the Meeting (MoM).Dont include speaker names in the Action Items."},
             {"role": "user", "content": f"Generate minutes of the meeting in the following format:\n\n"
                                          "Meeting Title: \n"
-                                         "Date: \n"
-                                         "Attendees: \n"
                                          "Agenda: \n"
                                          "Key Discussions: \n"
                                          "Decisions Made: \n"
@@ -50,7 +48,7 @@ def save_mom_as_pdf(mom_text):
     pdf.cell(200, 10, f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True, align='C')
     pdf.ln(10)
 
-    sections = ["Meeting Title:", "Date:", "Attendees:", "Agenda:", "Key Discussions:", "Decisions Made:", "Action Items:", "Next Steps:"]
+    sections = ["Meeting Title:", "Agenda:", "Key Discussions:", "Decisions Made:", "Action Items:", "Next Steps:"]
     lines = mom_text.split("\n")
 
     for line in lines:
