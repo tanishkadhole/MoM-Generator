@@ -23,7 +23,14 @@ model = Pipeline.from_pretrained(
     "pyannote/speaker-diarization@2.1",
     use_auth_token=auth_token
 )
-device = torch.device("mps") if use_mps else torch.device("cpu")
+#device = torch.device("mps") if use_mps else torch.device("cpu")
+# Determine the device to use: MPS, CUDA, or CPU
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+elif torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
 model.to(device)
 print("✅ Pyannote model loaded!")
 
