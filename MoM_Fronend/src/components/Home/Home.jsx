@@ -22,8 +22,8 @@ export default function Home() {
         formData.append("audio", selectedFile);
 
         try {
-            
-            const response = await fetch("http://localhost:5000/process-audio", {
+
+            const response = await fetch("http://localhost:5001/process-audio", {
                 method: "POST",
                 body: formData
             });

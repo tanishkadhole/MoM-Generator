@@ -57,4 +57,5 @@ def process_audio():
 
 
 if __name__ == "__main__":
-    app.run(debug=False, port=5000)
+    print("✅ Flask server is running and waiting for requests...")
+    app.run(debug=False, port=5001)
