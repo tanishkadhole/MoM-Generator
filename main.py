@@ -1,16 +1,16 @@
-import diarizationcopy
-import transcriptioncopy
+import speaker_diariazation
+import transcription
 import mom_g
 
 # Function to process video and generate MoM
 def process_video(video_path):
     # Step 1: Diarization
     print("Running speaker diarization...")
-    diarization_result = diarizationcopy.diarize_audio(video_path, "speaker_embeddings.npy")
+    diarization_result = speaker_diariazation.diarize_audio(video_path, "speaker_embeddings.npy")
 
     # Step 2: Transcription
     print("Running transcription...")
-    transcription_result = transcriptioncopy.transcribe_with_speakers(diarization_result, video_path)
+    transcription_result = transcription.transcribe_with_speakers(diarization_result, video_path)
 
     # Step 3: Generate MoM
     print("Generating Minutes of Meeting...")
@@ -22,5 +22,5 @@ def process_video(video_path):
 
 # Example usage
 if __name__ == "__main__":
-    video_path = "test.wav"
+    video_path = "test.wav" # Replace with the path to your video file
     process_video(video_path)
