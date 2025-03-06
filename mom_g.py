@@ -4,6 +4,7 @@ from datetime import datetime
 from fpdf import FPDF
 import os
 from dotenv import load_dotenv
+from transcription import transcribe_with_speakers
 
 # Load environment variables from .env file
 load_dotenv()
@@ -12,6 +13,18 @@ load_dotenv()
 api_key = os.getenv("GROQ_API_KEY")
 
 client = groq.Client(api_key=api_key)
+
+def generate_mom_from_audio(audio_path):
+    # Step 1: Transcription with Diarization
+    print("Running transcription with speaker diarization...")
+    transcription_result = transcribe_with_speakers(audio_path)
+    transcription_text = "\n".join(transcription_result)
+
+    # Step 2: Generate MoM
+    mom_text = generate_mom(transcription_text)
+
+    # Step 3: Save the final document
+    save_mom_as_pdf(mom_text)
 
 def generate_mom(transcription_text):
     response = client.chat.completions.create(
@@ -63,13 +76,3 @@ def save_mom_as_pdf(mom_text):
 
     pdf.output(filename)
     print(f"PDF saved as {filename}")
-
-
-transcription_file = "transcriptions/transcription.txt"
-# Read transcript from a file
-with open(transcription_file, "r", encoding="utf-8") as file:
-    transcription_text = file.read()
-
-# Generate and save MoM
-mom_data = generate_mom(transcription_text)
-save_mom_as_pdf(mom_data)

@@ -3,7 +3,6 @@ import ffmpeg
 import os
 from speaker_diariazation import diarize_audio  
 from datetime import datetime
-import identify_speaker
 
 # ✅ Load Whisper Model
 print("🔄 Loading Whisper model...")
@@ -44,19 +43,15 @@ def transcribe_segment(audio_path, start, end):
 
 #     return "\n".join(transcript)
 
-def transcribe_with_speakers(diarization_result, audio_path):
-    
+def transcribe_with_speakers(audio_path):
+    # Step 1: Diarization
+    print("Running speaker diarization...")
+    diarization_result = diarize_audio(audio_path)
+
+    # Step 2: Transcription
     transcript = []
     for start, end, speaker in diarization_result:
         transcribed_text = transcribe_segment(audio_path, start, end)
         transcript.append(f"{speaker} spoke from {start:.1f} to {end:.1f}: {transcribed_text}")
 
     return transcript
-
-
-audio_file = "test.wav"  
-embeddings_path = "speaker_embeddings.npy"
-output_txt = "transcriptions/transcription.txt"
-
-diarization_result = diarize_audio(audio_file, embeddings_path)
-final_transcript = transcribe_with_speakers(diarization_result, audio_file)

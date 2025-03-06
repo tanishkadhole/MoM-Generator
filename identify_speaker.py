@@ -3,7 +3,6 @@ import torchaudio
 from pyannote.audio import Inference
 from scipy.spatial.distance import cosine
 import torch
-import embeddings
 import os
 
 # pyannote embedding model
@@ -62,7 +61,3 @@ def identify_speaker(unknown_audio_path, embeddings_path):
 #     except Exception as e:
 #         print(f"Error in speaker identification: {str(e)}")
 #         return "unknown_speaker"
-
-unknown_audio_path = "unknown.wav"
-embeddings_path = "speaker_embeddings.npy"
-identify_speaker(unknown_audio_path, embeddings_path)

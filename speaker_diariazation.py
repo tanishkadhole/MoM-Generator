@@ -1,7 +1,6 @@
 import os
 import torch
 import ffmpeg
-import identify_speaker
 from pyannote.audio import Pipeline
 from concurrent.futures import ThreadPoolExecutor  # Parallel processing
 import itertools
@@ -49,7 +48,7 @@ def split_audio(file_path, chunk_length=30):
 
 import ffmpeg
 
-def diarize_chunk(chunk_path, embeddings_path):
+def diarize_chunk(chunk_path, file_path):
     print(f"🎵 Processing chunk: {chunk_path}")
 
     try:
@@ -83,8 +82,6 @@ def diarize_chunk(chunk_path, embeddings_path):
     return updated_segments
 
 
-
-
 def merge_overlapping_segments(diarization_result):
     
     diarization_result.sort(key=lambda x: x[0])
@@ -113,35 +110,27 @@ def merge_overlapping_segments(diarization_result):
     return merged_segments
 
 
-def diarize_audio(file_path, embeddings_path):
+def diarize_audio(file_path):
     print("🎤 Running diarization on all chunks in parallel...")
 
-    
     chunk_paths = split_audio(file_path)
 
     print("🔍 Processing these chunks:")
     for chunk in chunk_paths:
         print(chunk)
 
-    
     results = []
     with ThreadPoolExecutor(max_workers=2) as executor:
-        #results = list(executor.map(lambda chunk: diarize_chunk(chunk, embeddings_path), chunk_paths))
-        chunk_results = list(executor.map(lambda chunk: diarize_chunk(chunk, embeddings_path), chunk_paths))
+        chunk_results = list(executor.map(lambda chunk: diarize_chunk(chunk, file_path), chunk_paths))
         results.extend(chunk_results)
-
 
     final_segments = sorted([seg for res in results for seg in res])
     cleaned_segments = merge_overlapping_segments(final_segments)
 
+    # Print the final speaker diarization results
+    print("\n🎤 **Final Speaker Diarization Results (Merged & Cleaned):**")
+    for start, end, speaker in sorted(cleaned_segments):
+        print(f"{speaker} spoke from {start:.1f} to {end:.1f}")
+
     return cleaned_segments
 
-
-file_path = "test.wav"  
-embeddings_path = "speaker_embeddings.npy"
-diarization_results = diarize_audio(file_path, embeddings_path)
-
-
-print("\n🎤 **Final Speaker Diarization Results (Merged & Cleaned):**")
-for start, end, speaker in sorted(diarization_results):
-    print(f"{speaker} spoke from {start:.1f} to {end:.1f}")
