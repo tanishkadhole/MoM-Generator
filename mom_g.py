@@ -46,7 +46,7 @@ def generate_mom(transcription_text):
     return response.choices[0].message.content
 
 def save_mom_as_pdf(mom_text):
-    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     folder_path = "MoM"
     os.makedirs(folder_path, exist_ok=True) 
 
@@ -76,3 +76,5 @@ def save_mom_as_pdf(mom_text):
 
     pdf.output(filename)
     print(f"PDF saved as {filename}")
+
+    return filename

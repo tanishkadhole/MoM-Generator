@@ -29,6 +29,17 @@ export default function Home() {
             });
 
             const data = await response.json();
+            if (response.ok) {
+                console.log("✅ MoM Generated Successfully", data.pdf_url);
+
+                // Trigger automatic download
+                const downloadLink = document.createElement("a");
+                downloadLink.href = `http://localhost:5001${data.pdf_url}`;
+                downloadLink.setAttribute("download", ""); // Hint to browser to download
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            }
             setMessage(data.message || "Error generating MoM");
         } catch (error) {
             console.error("Error:", error);

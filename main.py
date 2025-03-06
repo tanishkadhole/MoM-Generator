@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import mom_g  # Importing mom_g module which contains MoM generation functions
+from datetime import datetime
+from flask import send_from_directory
 
 app = Flask(__name__)
 CORS(app)  # Allow frontend requests
@@ -24,37 +26,34 @@ def process_audio():
             return jsonify({"error": "No file uploaded"}), 400
 
         print("💾 Saving file...")
-        try:
-            audio_path = os.path.join(UPLOAD_FOLDER, file.filename)
-            file.save(audio_path)
-            print(f"✅ File successfully saved to {audio_path}")
-        except Exception as e:
-            print(f"❌ Error saving file: {str(e)}")
-            raise
+        audio_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(audio_path)
+        print(f"✅ File successfully saved to {audio_path}")
 
         print("🎯 Generating MoM from audio...")
         try:
-            mom_text = mom_g.generate_mom_from_audio(audio_path)
-            print("✅ MoM successfully generated")
+            mom_g.generate_mom_from_audio(audio_path)  
+            print(f"✅ MoM successfully generated")  
+            # if not mom_text:
+            #     raise ValueError("MoM text is empty or None!")
         except Exception as e:
             print(f"❌ Error generating MoM: {str(e)}")
             raise
 
-        print("📄 Saving MoM as PDF...")
-        try:
-            pdf_path = os.path.join(PDF_FOLDER, f"{file.filename}.pdf")
-            mom_g.save_mom_as_pdf(mom_text)
-            print(f"✅ PDF successfully saved to {pdf_path}")
-        except Exception as e:
-            print(f"❌ Error saving PDF: {str(e)}")
-            raise
+        # ✅ `generate_mom_from_audio` already saves the PDF, so no need to call `save_mom_as_pdf` again
+        pdf_filename = f"MoM_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pdf"
+        pdf_path = os.path.join("MoM", pdf_filename)
 
-        return jsonify({"message": "MoM Generated Successfully", "pdf_path": pdf_path})
+        return jsonify({"message": "MoM Generated Successfully", "pdf_url": f"/download/{pdf_filename}"})
 
     except Exception as e:
         print(f"❌ Fatal error in process_audio: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+
+@app.route("/download/<filename>")
+def download_file(filename):
+    return send_from_directory("MoM", filename, as_attachment=True)
 
 if __name__ == "__main__":
     print("✅ Flask server is running and waiting for requests...")
