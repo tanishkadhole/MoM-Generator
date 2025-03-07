@@ -21,6 +21,7 @@ def process_audio():
         
         print("📂 Checking for uploaded file...")
         file = request.files.get("audio")
+        attendees = request.form.get("attendees")  # Retrieve attendees from the form data
         if not file:
             print("❌ Error: No file uploaded")
             return jsonify({"error": "No file uploaded"}), 400
@@ -32,15 +33,12 @@ def process_audio():
 
         print("🎯 Generating MoM from audio...")
         try:
-            mom_g.generate_mom_from_audio(audio_path)  
+            mom_g.generate_mom_from_audio(audio_path, attendees)  # Pass attendees to the function
             print(f"✅ MoM successfully generated")  
-            # if not mom_text:
-            #     raise ValueError("MoM text is empty or None!")
         except Exception as e:
             print(f"❌ Error generating MoM: {str(e)}")
             raise
 
-        # ✅ `generate_mom_from_audio` already saves the PDF, so no need to call `save_mom_as_pdf` again
         pdf_filename = f"MoM_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pdf"
         pdf_path = os.path.join("MoM", pdf_filename)
 
