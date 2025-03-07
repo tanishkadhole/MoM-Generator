@@ -65,7 +65,7 @@ export default function Home() {
         } else if (audioBlob) {
             formData.append("audio", audioBlob, "recorded_audio.wav");
         }
-        formData.append("attendees", attendees);
+        formData.append("attendees", attendees); // This line is already correct
 
         try {
             const response = await fetch("http://localhost:5001/process-audio", {
@@ -74,6 +74,7 @@ export default function Home() {
             });
 
             const data = await response.json();
+
             if (response.ok) {
                 console.log("✅ MoM Generated Successfully", data.pdf_url);
 
@@ -161,5 +162,4 @@ export default function Home() {
             {/* Display message */}
             {message && <p className="text-gray-700 mt-6 text-center text-lg">{message}</p>}
         </>
-    );
-}
+    )};
