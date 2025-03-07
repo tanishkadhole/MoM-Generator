@@ -3,13 +3,13 @@ import wave
 import threading
 from datetime import datetime
 import os
-from main import process_mom_audio
+from main import process_audio
 
 # Global variable to control recording
 is_recording = False
 
 # Function to start recording
-def start_recording(filename=None, duration=3600, sample_rate=44100):
+def start_recording(filename=None, duration=10, sample_rate=44100):
     global is_recording
     is_recording = True
     
@@ -41,7 +41,7 @@ def start_recording(filename=None, duration=3600, sample_rate=44100):
     print("Recording stopped.")
 
     # Pass the recorded audio to process_video
-    process_mom_audio(filename)
+    process_audio(filename)
 
 # Function to stop recording
 def stop_recording():

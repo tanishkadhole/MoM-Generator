@@ -5,13 +5,17 @@ export default function FAQ() {
     const [searchQuery, setSearchQuery] = useState("");
     const [openIndex, setOpenIndex] = useState(null);
 
-    // FAQ Data
+    // FAQ Data (Expanded with More Questions)
     const faqs = [
-        { question: "How do I reset my password?", answer: "Go to settings and click on 'Forgot Password' to reset it." },
-        { question: "What payment methods do you accept?", answer: "We accept Credit Cards, PayPal, and Razorpay." },
-        { question: "How can I contact support?", answer: "Use Live Chat, Email us, or Call our helpline." },
-        { question: "Is my data secure?", answer: "Yes, we use end-to-end encryption to protect your data." },
-        { question: "Can I upgrade my plan later?", answer: "Yes, you can upgrade anytime from the billing section." },
+        { question: "How do I know my work is done?", answer: "As soon as you click on generate it will start downloading the pdf file." }, 
+        { question: "What payment methods do you accept?", answer: "We accept Credit Cards, PayPal, UPI, and Razorpay." },
+        { question: "How can I contact support?", answer: "Use Live Chat, Email us, or Call our helpline for assistance." },
+        { question: "Is my data secure?", answer: "Yes, we use end-to-end encryption to protect your data and privacy." },
+        { question: "Do you offer refunds?", answer: "Yes, we offer a 7-day money-back guarantee on all plans." },
+        { question: "Is there a free trial available?", answer: "Yes, we offer a 14-day free trial with full features." },
+        { question: "Can I use your platform on mobile?", answer: "Absolutely! Our platform is fully responsive and mobile-friendly." },
+        { question: "How do I get started?", answer: "Sign up for an account and follow our quick-start guide to begin." },
+        { question: "Do you provide customer support 24/7?", answer: "Yes, our support team is available 24/7 to assist you." },
     ];
 
     // Toggle FAQ answer visibility
@@ -25,7 +29,7 @@ export default function FAQ() {
     );
 
     return (
-        <div className="min-h-screen bg-[#A4A69C] py-12">
+        <div className="min-h-screen bg-[#A4A69C] py-12 px-4">
             {/* Hero Section */}
             <div className="text-center text-white">
                 <FaQuestionCircle size={50} className="mx-auto text-[#00BFFF]" />
@@ -53,18 +57,18 @@ export default function FAQ() {
                     filteredFAQs.map((faq, index) => (
                         <div
                             key={index}
-                            className="bg-white p-4 rounded-lg shadow-md cursor-pointer"
+                            className="bg-white p-6 rounded-lg shadow-md cursor-pointer"
                             onClick={() => toggleFAQ(index)}
                         >
                             <div className="flex justify-between items-center">
-                                <h2 className="text-xl font-semibold text-[#152c39]">{faq.question}</h2>
+                                <h2 className="text-xl font-semibold text-[#152c39] text-justify">{faq.question}</h2>
                                 {openIndex === index ? (
                                     <FaChevronUp className="text-[#00BFFF]" />
                                 ) : (
                                     <FaChevronDown className="text-[#FF007F]" />
                                 )}
                             </div>
-                            {openIndex === index && <p className="text-gray-600 mt-2">{faq.answer}</p>}
+                            {openIndex === index && <p className="text-gray-600 mt-2 text-justify">{faq.answer}</p>}
                         </div>
                     ))
                 ) : (
