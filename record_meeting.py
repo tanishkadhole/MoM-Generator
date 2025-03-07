@@ -39,10 +39,10 @@ def start_recording(filename=None, duration=10, sample_rate=44100):
                 sd.sleep(1000)  # Sleep for 1 second
 
     print("Recording stopped.")
-    attendees = request.form.get("attendees")
+    #attendees = request.form.get("attendees")
 
     # Pass the recorded audio to mom_g function
-    generate_mom_from_audio(filename, attendees)
+    #generate_mom_from_audio(filename, attendees)
 
 # Function to stop recording
 def stop_recording():
