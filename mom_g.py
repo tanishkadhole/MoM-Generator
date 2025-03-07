@@ -14,26 +14,27 @@ api_key = os.getenv("GROQ_API_KEY")
 
 client = groq.Client(api_key=api_key)
 
-def generate_mom_from_audio(audio_path):
+def generate_mom_from_audio(audio_path, attendees):
     # Step 1: Transcription with Diarization
     print("Running transcription with speaker diarization...")
     transcription_result = transcribe_with_speakers(audio_path)
     transcription_text = "\n".join(transcription_result)
 
     # Step 2: Generate MoM
-    mom_text = generate_mom(transcription_text)
+    mom_text = generate_mom(transcription_text, attendees)
 
     # Step 3: Save the final document
     save_mom_as_pdf(mom_text)
 
-def generate_mom(transcription_text):
+def generate_mom(transcription_text, attendees):
     response = client.chat.completions.create(
         model="llama3-8b-8192",
         messages=[
-            {"role": "system", "content": "You are an AI assistant that generates well-structured Minutes of the Meeting (MoM).Dont include speaker names in the Action Items."},
+            {"role": "system", "content": "You are an AI assistant that generates well-structured Minutes of the Meeting (MoM). Don't include speaker names in the Action Items."},
             {"role": "user", "content": f"Generate minutes of the meeting in the following format:\n\n"
                                          "Meeting Title: \n"
                                          "Agenda: \n"
+                                         f"Attendees: {attendees}\n"
                                          "Key Discussions: \n"
                                          "Decisions Made: \n"
                                          "Action Items: \n"
@@ -61,7 +62,7 @@ def save_mom_as_pdf(mom_text):
     pdf.cell(200, 10, f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True, align='C')
     pdf.ln(10)
 
-    sections = ["Meeting Title:", "Agenda:", "Key Discussions:", "Decisions Made:", "Action Items:", "Next Steps:"]
+    sections = ["Meeting Title:", "Agenda:", "Attendees:" "Key Discussions:", "Decisions Made:", "Action Items:", "Next Steps:"]
     lines = mom_text.split("\n")
 
     for line in lines:
