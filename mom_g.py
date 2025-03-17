@@ -53,10 +53,12 @@ def save_mom_as_pdf(mom_text):
 
     filename = os.path.join(folder_path, f"MoM_{current_date}.pdf")
 
-    pdf = FPDF()
+    pdf = FPDF(format='A4', unit='mm')
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+
+    pdf.add_font("ArialUnicode", "", "/System/Library/Fonts/Supplemental/Arial Unicode.ttf", uni=True)  
+    pdf.set_font("ArialUnicode", size=12)
 
     pdf.cell(200, 10, "Minutes of the Meeting", ln=True, align='C')
     pdf.cell(200, 10, f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True, align='C')

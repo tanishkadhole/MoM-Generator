@@ -55,44 +55,46 @@ export default function Home() {
             alert("Please select a file or record audio!");
             return;
         }
-
+    
         setLoading(true);
         setMessage("");
-
+    
         const formData = new FormData();
         if (selectedFile) {
             formData.append("audio", selectedFile);
         } else if (audioBlob) {
-            formData.append("audio", audioBlob, "recorded_audio.wav");
+            const file = new File([audioBlob], "recorded_audio.wav", { type: "audio/wav" });
+            console.log("📤 Sending file:", file);
+            formData.append("audio", file);
         }
-        formData.append("attendees", attendees); // This line is already correct
-
+        formData.append("attendees", attendees);
+    
+        console.log("🔍 FormData contents:", [...formData.entries()]);
+    
         try {
             const response = await fetch("http://localhost:5001/process-audio", {
                 method: "POST",
                 body: formData
             });
-
+    
             const data = await response.json();
-
-            if (response.ok) {
-                console.log("✅ MoM Generated Successfully", data.pdf_url);
-
-                // Auto-download MoM PDF
-                const downloadLink = document.createElement("a");
-                downloadLink.href = `http://localhost:5001${data.pdf_url}`;
-                downloadLink.setAttribute("download", "");
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
-            }
-            setMessage(data.message || "Error generating MoM");
+            console.log("✅ Response from Flask:", data);
         } catch (error) {
-            console.error("Error:", error);
-            setMessage("Failed to generate MoM");
+            console.error("❌ Fetch error:", error);
         } finally {
             setLoading(false);
         }
+    };
+    
+    // Function to fix the WAV file header
+    const fixWavHeader = async (blob) => {
+        const buffer = await blob.arrayBuffer();
+        const view = new DataView(buffer);
+
+        // WAV Header Fix: Ensure 'fmt ' chunk size is 16
+        view.setUint32(16, 16, true);
+
+        return new Blob([buffer], { type: "audio/wav" });
     };
 
     return (

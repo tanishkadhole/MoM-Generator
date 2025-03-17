@@ -5,6 +5,7 @@ from pyannote.audio import Pipeline
 from concurrent.futures import ThreadPoolExecutor  # Parallel processing
 import itertools
 from dotenv import load_dotenv
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -34,6 +35,17 @@ model.to(device)
 print("✅ Pyannote model loaded!")
 
 
+def convert_to_wav(input_path, output_path="uploads/converted_audio.wav"):
+    print("🔄 Converting audio to PCM WAV (16-bit, 16kHz, mono)...")
+    try:
+        ffmpeg.input(input_path).output(output_path, acodec="pcm_s16le", ar=16000, ac=1).run(overwrite_output=True, quiet=True)
+        print(f"✅ Conversion complete: {output_path}")
+        return output_path
+    except Exception as e:
+        print(f"❌ Error converting audio: {e}")
+        return None
+
+
 def split_audio(file_path, chunk_length=30):
     print("✂️ Splitting audio into 30s chunks...")
     os.makedirs("chunks", exist_ok=True)
@@ -54,7 +66,12 @@ def diarize_chunk(chunk_path, file_path):
     try:
         diarization = model(chunk_path)
         probe = ffmpeg.probe(file_path)
-        audio_length = float(probe["format"]["duration"])
+        print(f"🧐 ffmpeg.probe output: {json.dumps(probe, indent=2)}")
+
+        audio_length = float(probe["format"].get("duration", 0))
+        if audio_length == 0:
+            raise ValueError("Audio duration is 0, possible invalid file.")
+        
     except Exception as e:
         print(f"❌ Error processing {chunk_path}: {e}")
         return []
@@ -113,6 +130,7 @@ def merge_overlapping_segments(diarization_result):
 def diarize_audio(file_path):
     print("🎤 Running diarization on all chunks in parallel...")
 
+    file_path = convert_to_wav(file_path)
     chunk_paths = split_audio(file_path)
 
     print("🔍 Processing these chunks:")

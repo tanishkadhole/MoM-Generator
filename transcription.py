@@ -13,20 +13,32 @@ print("✅ Whisper model loaded!")
 def transcribe_segment(audio_path, start, end):
     segment_audio = f"temp_segment_{start:.2f}_{end:.2f}.wav"
 
-    try:
-        
-        ffmpeg.input(audio_path, ss=start, to=end).output(segment_audio, acodec="copy").run(overwrite_output=True, quiet=True)
+    if end - start < 0.5:  # 🔹 Skip segments shorter than 0.5s
+        print(f"⚠️ Skipping short segment ({start:.2f}-{end:.2f})")
+        return "[Skipped - Too Short]"
 
-        
+    try:
+        # ✅ Convert to WAV instead of copying codec
+        ffmpeg.input(audio_path, ss=start, to=end).output(
+            segment_audio, acodec="pcm_s16le", ar=16000, ac=1
+        ).run(overwrite_output=True, quiet=True)
+
+        # ✅ Ensure the extracted segment has valid duration
+        probe = ffmpeg.probe(segment_audio)
+        duration = float(probe["format"].get("duration", 0))
+        if duration == 0:
+            print(f"⚠️ Skipping silent/invalid segment ({start:.2f}-{end:.2f})")
+            return "[Skipped - Silent]"
+
+        # ✅ Transcribe with Whisper
         transcription = whisper_model.transcribe(segment_audio)["text"]
-        return transcription
+        return transcription if transcription.strip() else "[No Speech Detected]"
 
     except Exception as e:
         print(f"❌ Error processing segment ({start:.2f}-{end:.2f}): {e}")
         return "[ERROR]"
 
     finally:
-        # ✅ Cleanup temp file
         if os.path.exists(segment_audio):
             os.remove(segment_audio)
 
