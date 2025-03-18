@@ -1,2 +1,0 @@
-tan:  Hello, how are you?
-rahul:  Bye.
