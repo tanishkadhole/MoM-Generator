@@ -24,7 +24,8 @@ def generate_mom_from_audio(audio_path, attendees):
     mom_text = generate_mom(transcription_text, attendees)
 
     # Step 3: Save the final document
-    save_mom_as_pdf(mom_text)
+    pdf_filename = save_mom_as_pdf(mom_text)
+    return pdf_filename
 
 def generate_mom(transcription_text, attendees):
     response = client.chat.completions.create(
@@ -48,10 +49,11 @@ def generate_mom(transcription_text, attendees):
 
 def save_mom_as_pdf(mom_text):
     current_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    pdf_filename = f"MoM_{current_date}.pdf"
     folder_path = "MoM"
     os.makedirs(folder_path, exist_ok=True) 
 
-    filename = os.path.join(folder_path, f"MoM_{current_date}.pdf")
+    filename = os.path.join(folder_path, pdf_filename)
 
     pdf = FPDF(format='A4', unit='mm')
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -80,4 +82,4 @@ def save_mom_as_pdf(mom_text):
     pdf.output(filename)
     print(f"PDF saved as {filename}")
 
-    return filename
+    return pdf_filename
