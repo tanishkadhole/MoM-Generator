@@ -11,50 +11,28 @@ embedding_model = Inference("pyannote/embedding", device=device)
 
 def extract_speaker_embedding(file_path):
     waveform, sample_rate = torchaudio.load(file_path)
+    waveform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)(waveform)
 
-    # Mono audio
+    # Convert to mono
     if waveform.shape[0] > 1:
         waveform = waveform.mean(dim=0, keepdim=True)
 
-    # Move waveform to the correct device (same as the model)
+    # Move waveform to the correct device
     waveform = waveform.to(device)
 
+    # Process waveform
     input_data = {"waveform": waveform, "sample_rate": sample_rate}
+    embedding = embedding_model(input_data)  # Returns SlidingWindowFeature
 
-    embedding = embedding_model(input_data)
+    # ✅ Convert SlidingWindowFeature to NumPy
+    embedding_array = np.array(embedding.data)  # Extract actual data
 
-    return embedding.data.flatten()
+    # ✅ Ensure correct shape (512,)
+    if embedding_array.ndim > 1:
+        embedding_array = embedding_array.mean(axis=0)  # Average multiple embeddings
 
+    return embedding_array[:512]  # Trim to 512 dims
 
-# def extract_speaker_embedding(file_path):
-#     """Extract a 512-dimensional speaker embedding from an audio file."""
-#     waveform, sample_rate = torchaudio.load(file_path)
-    
-#     # Convert to mono if necessary
-#     if waveform.shape[0] > 1:
-#         waveform = waveform.mean(dim=0, keepdim=True)
-    
-#     # Move to correct device
-#     waveform = waveform.to(device)
-    
-#     # Create input dictionary
-#     input_data = {"waveform": waveform, "sample_rate": sample_rate}
-    
-#     # Get embedding
-#     embedding = embedding_model(input_data)
-    
-#     # Convert SlidingWindowFeature to numpy array
-#     embedding_np = embedding.data
-    
-#     # If we have multiple segments, take the mean
-#     if len(embedding_np.shape) > 1:
-#         embedding_np = np.mean(embedding_np, axis=0)
-    
-#     # Ensure we have a 512-dimensional vector
-#     if embedding_np.size != 512:
-#         raise ValueError(f"Expected 512-dimensional embedding, got {embedding_np.size}")
-    
-#     return embedding_np.flatten()
 
 
 def save_pre_recorded_embeddings(pre_recorded_dir, output_path):
@@ -63,35 +41,18 @@ def save_pre_recorded_embeddings(pre_recorded_dir, output_path):
         if file_name.endswith(".wav"):
             speaker_name = os.path.splitext(file_name)[0]
             file_path = os.path.join(pre_recorded_dir, file_name)
-            embedding = extract_speaker_embedding(file_path)
-            embeddings[speaker_name] = np.array(embedding).flatten()  # Ensure (512,) shape
             
-            #embeddings[speaker_name] = extract_speaker_embedding(file_path)
-            print(f"Extracted embedding for: {speaker_name}, shape: {embeddings[speaker_name].shape}")
+            embedding = extract_speaker_embedding(file_path)
+
+            if embedding.shape[0] != 512:  # Ensure 512-dim embeddings
+                print(f"⚠️ Warning: {speaker_name} embedding shape {embedding.shape}, fixing...")
+                embedding = embedding[:512]  # Trim if needed
+
+            embeddings[speaker_name] = embedding  # Store the corrected embedding
+            print(f"✅ Extracted embedding for: {speaker_name}, shape: {embedding.shape}")
 
     np.save(output_path, embeddings, allow_pickle=True)
-    print(f"Saved embeddings to {output_path}")
-
-# def save_pre_recorded_embeddings(pre_recorded_dir, output_path):
-#     """Save embeddings for pre-recorded speaker samples."""
-#     embeddings = {}
-#     for file_name in os.listdir(pre_recorded_dir):
-#         if file_name.endswith(".wav"):
-#             speaker_name = os.path.splitext(file_name)[0]
-#             file_path = os.path.join(pre_recorded_dir, file_name)
-#             try:
-#                 embedding = extract_speaker_embedding(file_path)
-#                 embeddings[speaker_name] = embedding
-#                 print(f"Extracted embedding for: {speaker_name}, shape: {embedding.shape}")
-#             except Exception as e:
-#                 print(f"Error processing {speaker_name}: {str(e)}")
-#                 continue
-    
-#     if embeddings:
-#         np.save(output_path, embeddings, allow_pickle=True)
-#         print(f"Saved embeddings to {output_path}")
-#     else:
-#         print("No embeddings were successfully extracted")
+    print(f"📂 Saved embeddings to {output_path}")
 
 
 pre_recorded_dir = "real_time_recordings/"

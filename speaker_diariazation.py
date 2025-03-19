@@ -5,7 +5,9 @@ from pyannote.audio import Pipeline
 from concurrent.futures import ThreadPoolExecutor  # Parallel processing
 import itertools
 from dotenv import load_dotenv
+from identify_speaker import identify_speaker
 import json
+import torchaudio
 
 # Load environment variables from .env file
 load_dotenv()
@@ -35,6 +37,30 @@ model.to(device)
 print("✅ Pyannote model loaded!")
 
 
+def extract_audio_segment(audio_path, start_time, end_time, output_path="temp_segment.wav"):
+    """
+    Extracts a segment of audio from start_time to end_time and saves it as a separate file.
+    """
+    waveform, sample_rate = torchaudio.load(audio_path)
+
+    # Resample to 16kHz for consistency
+    if sample_rate != 16000:
+        waveform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)(waveform)
+        sample_rate = 16000  # Update sample rate
+    
+    # Convert start and end time to sample indices
+    start_sample = int(start_time * sample_rate)
+    end_sample = int(end_time * sample_rate)
+
+    # Extract the segment
+    segment_waveform = waveform[:, start_sample:end_sample]
+
+    # Save the extracted segment
+    torchaudio.save(output_path, segment_waveform, sample_rate)
+    
+    return output_path
+
+
 def convert_to_wav(input_path, output_path="uploads/converted_audio.wav"):
     print("🔄 Converting audio to PCM WAV (16-bit, 16kHz, mono)...")
     try:
@@ -46,21 +72,45 @@ def convert_to_wav(input_path, output_path="uploads/converted_audio.wav"):
         return None
 
 
-def split_audio(file_path, chunk_length=30):
-    print("✂️ Splitting audio into 30s chunks...")
+def split_audio(file_path, chunk_length=30, overlap=10):
+    print(f"✂️ Splitting audio into {chunk_length}s chunks with {overlap}s overlap...")
+    
     os.makedirs("chunks", exist_ok=True)
-    os.system(f"ffmpeg -i {file_path} -f segment -segment_time {chunk_length} -c copy chunks/chunk_%03d.wav")
-    chunk_files = sorted([os.path.join("chunks", f) for f in os.listdir("chunks") if f.endswith(".wav")])
-    if not chunk_files:
-        print("❌ No chunks were created! Check audio file format.")
-    print(f"✅ {len(chunk_files)} chunks created!")
+    
+    # Load the full audio
+    waveform, sample_rate = torchaudio.load(file_path)
+    
+    # Convert chunk & overlap duration to samples
+    chunk_size = chunk_length * sample_rate
+    overlap_size = overlap * sample_rate
+    step_size = chunk_size - overlap_size  # Step size to move the window
+    
+    total_samples = waveform.shape[1]
+    
+    chunk_files = []
+    start_sample = 0
+    chunk_index = 0
+
+    while start_sample < total_samples:
+        end_sample = min(start_sample + chunk_size, total_samples)
+
+        # Extract segment
+        chunk_waveform = waveform[:, start_sample:end_sample]
+
+        # Save chunk
+        chunk_path = f"chunks/chunk_{chunk_index:03d}.wav"
+        torchaudio.save(chunk_path, chunk_waveform, sample_rate)
+        chunk_files.append(chunk_path)
+
+        # Move to the next chunk position
+        start_sample += step_size
+        chunk_index += 1
+
+    print(f"✅ {len(chunk_files)} overlapping chunks created!")
     return chunk_files
-    #return sorted([os.path.join("chunks", f) for f in os.listdir("chunks") if f.endswith(".wav")])
 
 
-import ffmpeg
-
-def diarize_chunk(chunk_path, file_path):
+def diarize_chunk(chunk_path, file_path, embeddings_path="./speaker_embeddings.npy"):
     print(f"🎵 Processing chunk: {chunk_path}")
 
     try:
@@ -78,23 +128,18 @@ def diarize_chunk(chunk_path, file_path):
 
     updated_segments = []
 
-    # Extract chunk number from file name to calculate actual start time
-    chunk_number = int(os.path.basename(chunk_path).split("_")[-1].split(".")[0])  # Extract chunk number
-    chunk_offset = chunk_number * 30  # Each chunk is 30s long
+    chunk_number = int(os.path.basename(chunk_path).split("_")[-1].split(".")[0])  
+    chunk_offset = chunk_number * 30  
 
-    # for turn, _, speaker in diarization.itertracks(yield_label=True):
-    #     start = turn.start + chunk_offset  # Adjust start time with chunk offset
-    #     end = turn.end + chunk_offset  # Adjust end time with chunk offset
-    #     print(f"🔍 {speaker} spoke from {start:.1f} to {end:.1f}")  # Debugging
-
-    #     updated_segments.append((start, end, speaker))
-    
     for turn, _, speaker in diarization.itertracks(yield_label=True):
-        start = min(turn.start + chunk_offset, audio_length)  # ✅ Trim to max audio length
-        end = min(turn.end + chunk_offset, audio_length)  # ✅ Trim to max audio length
-        
+        start = min(turn.start + chunk_offset, audio_length)
+        end = min(turn.end + chunk_offset, audio_length)
+
         if start < end:  # Ensure valid segments
-            updated_segments.append((start, end, speaker))
+            segment_audio = extract_audio_segment(chunk_path, turn.start, turn.end)  # Extract only the speaker's part
+            speaker_name = identify_speaker(segment_audio, embeddings_path)  # Identify each speaker separately
+            
+            updated_segments.append((start, end, speaker_name))
 
     return updated_segments
 
@@ -107,31 +152,30 @@ def merge_overlapping_segments(diarization_result):
     
     for key, group in itertools.groupby(diarization_result, key=lambda x: x[2]):  
         grouped_segments = list(group)
-
         
         merged_start, merged_end = grouped_segments[0][0], grouped_segments[0][1]
         
         for i in range(1, len(grouped_segments)):
-            start, end = grouped_segments[i][0], grouped_segments[i][1]
+            start, end, current_speaker = grouped_segments[i]  
 
-            
-            if start <= merged_end + 0.5:  
-                merged_end = max(merged_end, end) 
-            else:
+            # ✅ Prevent merging different speakers
+            if key != current_speaker or start > merged_end + 0.5:
                 merged_segments.append((merged_start, merged_end, key))  
                 merged_start, merged_end = start, end  
+            else:
+                merged_end = max(merged_end, end)  
 
-
-        merged_segments.append((merged_start, merged_end, key))
+        if not merged_segments or merged_segments[-1] != (merged_start, merged_end, key):
+            merged_segments.append((merged_start, merged_end, key))
 
     return merged_segments
 
 
-def diarize_audio(file_path):
+def diarize_audio(file_path, embeddings_path='./speaker_embeddings.npy'):
     print("🎤 Running diarization on all chunks in parallel...")
 
     file_path = convert_to_wav(file_path)
-    chunk_paths = split_audio(file_path)
+    chunk_paths = split_audio(file_path, chunk_length=30, overlap=10)
 
     print("🔍 Processing these chunks:")
     for chunk in chunk_paths:
@@ -139,7 +183,7 @@ def diarize_audio(file_path):
 
     results = []
     with ThreadPoolExecutor(max_workers=2) as executor:
-        chunk_results = list(executor.map(lambda chunk: diarize_chunk(chunk, file_path), chunk_paths))
+        chunk_results = list(executor.map(lambda chunk: diarize_chunk(chunk, file_path, embeddings_path), chunk_paths))
         results.extend(chunk_results)
 
     final_segments = sorted([seg for res in results for seg in res])
@@ -148,7 +192,7 @@ def diarize_audio(file_path):
     # Print the final speaker diarization results
     print("\n🎤 **Final Speaker Diarization Results (Merged & Cleaned):**")
     for start, end, speaker in sorted(cleaned_segments):
-        print(f"{speaker} spoke from {start:.1f} to {end:.1f}")
+        if speaker != "Unknown Speaker":
+            print(f"{speaker} spoke from {start:.1f} to {end:.1f}")
 
     return cleaned_segments
-

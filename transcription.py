@@ -58,7 +58,7 @@ def transcribe_segment(audio_path, start, end):
 def transcribe_with_speakers(audio_path):
     # Step 1: Diarization
     print("Running speaker diarization...")
-    diarization_result = diarize_audio(audio_path)
+    diarization_result = diarize_audio(audio_path, embeddings_path='./speaker_embeddings.npy')
 
     # Step 2: Transcription
     transcript = []

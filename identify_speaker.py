@@ -3,61 +3,47 @@ import torchaudio
 from pyannote.audio import Inference
 from scipy.spatial.distance import cosine
 import torch
+import embeddings
 import os
 
 # pyannote embedding model
 embedding_model = Inference("pyannote/embedding", device="cuda" if torch.cuda.is_available() else "cpu")
 
-def identify_speaker(unknown_audio_path, embeddings_path):
-    pre_recorded_embeddings = np.load(embeddings_path, allow_pickle=True).item()
+from scipy.spatial.distance import cosine
+import numpy as np
 
-    unknown_embedding = embeddings.extract_speaker_embedding(unknown_audio_path)
+def identify_speaker(audio_segment, embeddings_path, confidence_threshold=0.5):
+    """Identifies the speaker by comparing the extracted embedding with stored embeddings."""
 
-    # Aggregate embeddings for better accuracy
-    num_segments = len(unknown_embedding) // 512  # Divide into 512-dim chunks
-    avg_embedding = np.mean(unknown_embedding.reshape(num_segments, 512), axis=0)
+    # Load stored speaker embeddings
+    try:
+        saved_embeddings = np.load(embeddings_path, allow_pickle=True).item()
+    except Exception as e:
+        print(f"❌ Error loading embeddings: {e}")
+        return "Unknown"
 
-    # Closest match using cosine similarity
-    closest_speaker = None
-    min_distance = float("inf")
-    for speaker_name, embedding in pre_recorded_embeddings.items():
-        print(f"Unknown embedding shape: {unknown_embedding.shape}")
-        print(f"Stored embedding shape: {embedding.shape}")
+    unknown_embedding = embeddings.extract_speaker_embedding(audio_segment)
 
-        distance = cosine(unknown_embedding, embedding)
-        if distance < min_distance:
-            min_distance = distance
-            closest_speaker = speaker_name
+    if unknown_embedding.shape[0] != 512:
+        print(f"⚠️ Warning: Extracted embedding has shape {unknown_embedding.shape}, fixing...")
+        unknown_embedding = unknown_embedding[:512]  # Trim if needed
 
-    print(f"Identified speaker: {closest_speaker} (distance: {min_distance:.4f})")
-    return closest_speaker
+    best_match = None
+    best_score = float("inf")
 
+    for speaker, ref_embedding in saved_embeddings.items():
+        if ref_embedding.shape[0] != 512:
+            print(f"⚠️ Warning: {speaker}'s stored embedding shape {ref_embedding.shape}, fixing...")
+            ref_embedding = ref_embedding[:512]  # Trim if needed
 
-# def identify_speaker(unknown_audio_path, embeddings_path, threshold=0.8):
-#     """Identify speaker from unknown audio using pre-recorded embeddings."""
-#     try:
-#         pre_recorded_embeddings = np.load(embeddings_path, allow_pickle=True).item()
-#         unknown_embedding = embeddings.extract_speaker_embedding(unknown_audio_path)
-        
-#         closest_speaker = None
-#         min_distance = float("inf")
-        
-#         for speaker_name, embedding in pre_recorded_embeddings.items():
-#             distance = cosine(unknown_embedding, embedding)
-#             print(f"Distance from {speaker_name}: {distance:.4f}")
-            
-#             if distance < min_distance:
-#                 min_distance = distance
-#                 closest_speaker = speaker_name
-        
-#         # Only return a speaker if the confidence is high enough
-#         if min_distance < threshold:
-#             print(f"Identified speaker: {closest_speaker} (distance: {min_distance:.4f})")
-#             return closest_speaker
-#         else:
-#             print(f"No speaker identified with confidence (min distance: {min_distance:.4f})")
-#             return "unknown_speaker"
-            
-#     except Exception as e:
-#         print(f"Error in speaker identification: {str(e)}")
-#         return "unknown_speaker"
+        score = cosine(unknown_embedding, ref_embedding)
+
+        if score < best_score:
+            best_match = speaker
+            best_score = score
+
+    print(f"🔍 Best match: {best_match} (Score: {best_score:.2f})")
+
+    # ✅ Keep only **high-confidence** speakers
+    return best_match if best_score <= confidence_threshold else "Unknown Speaker"
+
