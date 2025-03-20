@@ -1,13 +1,14 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
-import mom_g  # Importing mom_g module which contains MoM generation functions
+import mom_g
 from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)  # Allow frontend requests
 
 UPLOAD_FOLDER = "uploads"
+AUDIO_FOLDER = "real_time_recordings"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 PDF_FOLDER = "MoM"  # Keep PDFs in the "MoM" folder
@@ -60,6 +61,18 @@ def preview_file(filename):
 def download_file(filename):
     """Force the PDF to download."""
     return send_from_directory(PDF_FOLDER, filename, as_attachment=True)
+
+@app.route("/list-audio-files", methods=["GET"])
+def list_audios():
+    try:
+        files = [f for f in os.listdir(AUDIO_FOLDER) if f.endswith(".wav")]
+        return jsonify({"audios": files})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/get-audio/<filename>")
+def get_audio(filename):
+    return send_from_directory(AUDIO_FOLDER, filename)
 
 
 if __name__ == "__main__":

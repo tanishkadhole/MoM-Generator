@@ -10,6 +10,8 @@ export default function Home() {
     const [message, setMessage] = useState("");
     const [pdfURL, setPdfURL] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [showAudioList, setShowAudioList] = useState(false);
+    const [audioFiles, setAudioFiles] = useState([]);
 
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
@@ -98,14 +100,70 @@ export default function Home() {
         setShowModal(false);
     };
 
+
+    // Fetch pre-recorded audio files
+    const fetchAudioFiles = async () => {
+        try {
+            const response = await fetch("http://localhost:5001/list-audio-files");
+            const data = await response.json();
+            setAudioFiles(data.audios);
+            setShowAudioList(true);
+        } catch (error) {
+            console.error("❌ Error fetching audio files:", error);
+        }
+    };
+
     return (
         <>
             <div>
                 <img src="./public/mom_final.png" alt="MoM_Image" />
             </div>
 
+            <div className="mt-10 flex justify-center space-x-4">
+            <button onClick={fetchAudioFiles} className="bg-purple-600 text-white py-4 px-8 my-7 rounded-lg shadow-lg text-xl font-semibold hover:bg-purple-700 transition">
+                List Pre-Recorded Audios
+            </button>
+
+                <button onClick={() => console.log("Adding New Speaker")} className="bg-orange-600 text-white py-4 px-8 my-7 rounded-lg shadow-lg text-xl font-semibold hover:bg-orange-700 transition">
+                    Add New Speaker
+                </button>
+            </div>
+
+            {/* Display Pre-Recorded Audio List */}
+            {showAudioList && (
+                <div className="mt-6 bg-white p-6 rounded-lg shadow-lg">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-semibold text-gray-800">Pre-Recorded Audio Files:</h3>
+                        <button 
+                            onClick={() => setShowAudioList(false)} 
+                            className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-600 transition"
+                        >
+                            ✖ Close
+                        </button>
+                    </div>
+
+                    <ul className="mt-4">
+                        {audioFiles.length > 0 ? (
+                            audioFiles.map((file, index) => (
+                                <li key={index} className="flex items-center space-x-4 border-b py-2">
+                                    <span className="text-gray-700">{file}</span>
+                                    <audio controls>
+                                        <source src={`http://localhost:5001/get-audio/${file}`} type="audio/wav" />
+                                    </audio>
+                                </li>
+                            ))
+                        ) : (
+                            <p className="text-gray-500">No audio files found.</p>
+                        )}
+                    </ul>
+                </div>
+            )}
+
+
+
             <div className="max-w-6xl mx-auto px-6 mt-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
                 <div className="bg-white p-8 rounded-lg shadow-xl text-center flex flex-col items-center w-full h-60">
+                    
                     <h2 className="text-2xl font-semibold text-[#152c39] mb-4">Upload Your File</h2>
                     <label className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-8 rounded-lg transition text-lg">
                         Select File
