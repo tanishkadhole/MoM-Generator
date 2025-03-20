@@ -62,24 +62,29 @@ def extract_embedding(audio_file):
         raise ValueError("Unexpected embedding type: {}".format(type(embedding)))
 
 
-def save_speaker_embedding(speaker_name, audio_file):
-    if not os.path.exists(audio_file):
-        print(f"Audio file '{audio_file}' not found.")
-        return
-
-    embedding = extract_embedding(audio_file)
+def save_speaker_embedding(speaker_name, embedding):
+    """Saves speaker embeddings safely."""
     
+    # Check if embeddings file exists
     if os.path.exists(EMBEDDINGS_FILE):
-        with open(EMBEDDINGS_FILE, "rb") as f:
-            embeddings = pickle.load(f)
+        try:
+            with open(EMBEDDINGS_FILE, "rb") as f:
+                embeddings = pickle.load(f)
+        except (EOFError, pickle.UnpicklingError):  # Handle empty/corrupt files
+            print("Warning: Embeddings file is corrupted. Resetting it.")
+            embeddings = {}
     else:
         embeddings = {}
-    
+
+    # Add new speaker embedding
     embeddings[speaker_name] = embedding
+
+    # Save back safely
     with open(EMBEDDINGS_FILE, "wb") as f:
         pickle.dump(embeddings, f)
-    
+
     print(f"Saved embedding for speaker: {speaker_name}")
+
 
 
 

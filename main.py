@@ -3,6 +3,8 @@ from flask_cors import CORS
 import os
 import mom_g
 from datetime import datetime
+import subprocess
+from new_speaker import add_new_speaker
 
 app = Flask(__name__)
 CORS(app)  # Allow frontend requests
@@ -74,7 +76,33 @@ def list_audios():
 def get_audio(filename):
     return send_from_directory(AUDIO_FOLDER, filename)
 
+@app.route("/add-speaker", methods=["POST"])
+def add_speaker():
+    try:
+        data = request.get_json()
+        speaker_name = data.get("speaker_name")
 
+        if not speaker_name:
+            return jsonify({"error": "Speaker name is required"}), 400
+
+        # Call new_speaker.py script with the speaker name
+        subprocess.run(["python3", "new_speaker.py"], input=speaker_name.encode(), check=True)
+
+        return jsonify({"message": f"Speaker '{speaker_name}' added successfully!"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/delete-audio/<filename>", methods=["DELETE"])
+def delete_audio(filename):
+    file_path = os.path.join(AUDIO_FOLDER, filename)
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return jsonify({"message": f"{filename} deleted successfully."}), 200
+    else:
+        return jsonify({"error": "File not found."}), 404
+    
 if __name__ == "__main__":
     print("✅ Flask server is running and waiting for requests...")
     app.run(debug=False, port=5001)

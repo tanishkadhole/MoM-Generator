@@ -12,6 +12,10 @@ export default function Home() {
     const [showModal, setShowModal] = useState(false);
     const [showAudioList, setShowAudioList] = useState(false);
     const [audioFiles, setAudioFiles] = useState([]);
+    const [showSpeakerInput, setShowSpeakerInput] = useState(false);
+    const [speakerName, setSpeakerName] = useState("");
+    const [isRecording, setIsRecording] = useState(false);
+    const [countdown, setCountdown] = useState(null);
 
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
@@ -113,6 +117,79 @@ export default function Home() {
         }
     };
 
+    const addNewSpeaker = async () => {
+        if (!showSpeakerInput) {
+            setShowSpeakerInput(true);
+            setMessage("5-second audio will be recorded after clicking Add.");
+            return;
+        }
+    
+        if (!speakerName) {
+            alert("Please enter a speaker name.");
+            return;
+        }
+    
+        setIsRecording(true);
+        setMessage(""); // Remove instruction message
+        setCountdown(3);
+    
+        // Start Countdown
+        const interval = setInterval(() => {
+            setCountdown((prev) => {
+                if (prev === 1) {
+                    clearInterval(interval);
+                    return null;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    
+        // Call Backend (new_speaker.py) Immediately
+        try {
+            const response = await fetch("http://localhost:5001/add-speaker", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ speaker_name: speakerName }),
+            });
+    
+            const data = await response.json();
+            if (response.ok) {
+                setMessage("✅ Successfully saved!");
+            } else {
+                setMessage(`❌ Error: ${data.error || "Failed to add speaker."}`);
+            }
+        } catch (error) {
+            console.error("❌ Error:", error);
+            setMessage("❌ Failed to connect to server.");
+        }
+    
+        setTimeout(() => {
+            setMessage("");
+            setShowSpeakerInput(false);
+            setSpeakerName("");
+            setIsRecording(false);
+        }, 3000);
+    };
+    
+    const deleteAudioFile = async (filename) => {
+        const confirmDelete = window.confirm(`Are you sure you want to delete "${filename}"?`);
+        if (!confirmDelete) return;
+
+        try {
+            const response = await fetch(`http://localhost:5001/delete-audio/${filename}`, { method: "DELETE" });
+            if (response.ok) {
+                setAudioFiles(audioFiles.filter(file => file !== filename)); // Remove from UI
+            } else {
+                alert("❌ Failed to delete the file.");
+            }
+        } catch (error) {
+            console.error("❌ Error deleting audio file:", error);
+        }
+    };
+
+
     return (
         <>
             <div>
@@ -124,9 +201,42 @@ export default function Home() {
                 List Pre-Recorded Audios
             </button>
 
-                <button onClick={() => console.log("Adding New Speaker")} className="bg-orange-600 text-white py-4 px-8 my-7 rounded-lg shadow-lg text-xl font-semibold hover:bg-orange-700 transition">
-                    Add New Speaker
-                </button>
+            <div className="flex flex-col items-center space-y-3">
+                {!showSpeakerInput ? (
+                    <button
+                        onClick={addNewSpeaker}
+                        className="bg-orange-600 text-white py-4 px-8 rounded-lg shadow-lg text-xl font-semibold hover:bg-orange-700 transition"
+                    >
+                        Add New Speaker
+                    </button>
+                ) : (
+                    <>
+                        <input
+                            type="text"
+                            value={speakerName}
+                            onChange={(e) => setSpeakerName(e.target.value)}
+                            placeholder="Enter speaker name"
+                            className="px-4 py-3 border-2 border-gray-300 rounded-md text-lg w-72"
+                        />
+                        <button
+                            onClick={addNewSpeaker}
+                            className="bg-orange-600 text-white py-4 px-8 rounded-lg shadow-lg text-xl font-semibold hover:bg-orange-700 transition"
+                            disabled={isRecording}
+                        >
+                            {isRecording ? "Recording..." : "Add"}
+                        </button>
+                    </>
+                )}
+
+                {/* Instruction Message */}
+                {message && <p className="text-gray-700 mt-2 text-lg font-semibold">{message}</p>}
+
+                {/* Show Countdown if Recording */}
+                {countdown !== null && (
+                    <p className="text-red-500 mt-2 text-lg font-semibold">Recording Starts in ... {countdown}s</p>
+                )}
+            </div>
+
             </div>
 
             {/* Display Pre-Recorded Audio List */}
@@ -145,11 +255,16 @@ export default function Home() {
                     <ul className="mt-4">
                         {audioFiles.length > 0 ? (
                             audioFiles.map((file, index) => (
-                                <li key={index} className="flex items-center space-x-4 border-b py-2">
-                                    <span className="text-gray-700">{file}</span>
-                                    <audio controls>
-                                        <source src={`http://localhost:5001/get-audio/${file}`} type="audio/wav" />
-                                    </audio>
+                                <li key={index} className="flex items-center justify-between border-b py-2">
+                                    <div className="flex items-center space-x-4">
+                                        <span className="text-gray-700">{file}</span>
+                                        <audio controls>
+                                            <source src={`http://localhost:5001/get-audio/${file}`} type="audio/wav" />
+                                        </audio>
+                                    </div>
+                                    <button onClick={() => deleteAudioFile(file)} className="text-red-500 hover:text-red-700 transition">
+                                        🗑️
+                                    </button>
                                 </li>
                             ))
                         ) : (
