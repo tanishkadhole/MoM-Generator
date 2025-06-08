@@ -4,6 +4,7 @@ import soundfile as sf
 from scipy.io.wavfile import write
 from pyannote.audio.pipelines.speaker_verification import PretrainedSpeakerEmbedding
 import pickle
+import sys
 import torch
 import numpy as np
 from dotenv import load_dotenv
@@ -97,5 +98,9 @@ def add_new_speaker(speaker_name, duration=5):
 
 
 if __name__ == "__main__":
-    speaker_name = input("Enter the name of the speaker: ")
+    if len(sys.argv) < 2:
+        print("❌ Error: Speaker name not provided.")
+        sys.exit(1)
+
+    speaker_name = sys.argv[1]
     add_new_speaker(speaker_name)

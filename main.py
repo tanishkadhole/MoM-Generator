@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
+import sys
 import mom_g
 from datetime import datetime
 import subprocess
@@ -16,13 +17,17 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 PDF_FOLDER = "MoM"  # Keep PDFs in the "MoM" folder
 os.makedirs(PDF_FOLDER, exist_ok=True)
 
-@app.route("/process-audio", methods=["POST"])
-def process_audio():
+@app.route("/process-audio-manual", methods=["POST"])
+def process_audio_manual():
     try:
         print("🚀 Starting process_audio function...")
 
         file = request.files.get("audio")
         attendees = request.form.get("attendees")
+        meeting_title = request.form.get("meetingTitle", "")
+        meeting_head = request.form.get("meetingHead", "")
+        meeting_date = request.form.get("meetingDate", "")
+        meeting_time = request.form.get("meetingTime", "")
 
         if not file:
             print("❌ Error: No file uploaded")
@@ -34,7 +39,44 @@ def process_audio():
 
         print("🎯 Generating MoM from audio...")
         try:
-            pdf_filename = mom_g.generate_mom_from_audio(audio_path, attendees)
+            pdf_filename = mom_g.generate_mom_from_audio_manual(audio_path, attendees, meeting_title, meeting_head, meeting_date, meeting_time)
+            pdf_path = os.path.join(PDF_FOLDER, pdf_filename)
+
+            print(f"✅ MoM successfully generated: {pdf_path}")
+
+            return jsonify({
+                "message": "MoM Generated Successfully",
+                "pdf_url": f"/preview/{pdf_filename}"  # preview endpoint
+            })
+
+        except Exception as e:
+            print(f"❌ Error generating MoM: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    except Exception as e:
+        print(f"❌ Fatal error in process_audio: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+@app.route("/process-audio-automated", methods=["POST"])
+def process_audio_automated():
+    try:
+        print("🚀 Starting process_audio function...")
+
+        file = request.files.get("audio")
+        attendees = request.form.get("attendees")
+        meeting_head = request.form.get("meetingHead", "")
+
+        if not file:
+            print("❌ Error: No file uploaded")
+            return jsonify({"error": "No file uploaded"}), 400
+
+        audio_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(audio_path)
+        print(f"✅ File successfully saved to {audio_path}")
+
+        print("🎯 Generating MoM from audio...")
+        try:
+            pdf_filename = mom_g.generate_mom_from_audio_automated(audio_path, attendees, meeting_head)
             pdf_path = os.path.join(PDF_FOLDER, pdf_filename)
 
             print(f"✅ MoM successfully generated: {pdf_path}")
@@ -86,7 +128,8 @@ def add_speaker():
             return jsonify({"error": "Speaker name is required"}), 400
 
         # Call new_speaker.py script with the speaker name
-        subprocess.run(["python3", "new_speaker.py"], input=speaker_name.encode(), check=True)
+        python_exec = sys.executable  # Uses the correct Python interpreter path
+        subprocess.run([python_exec, "new_speaker.py", speaker_name], check=True)
 
         return jsonify({"message": f"Speaker '{speaker_name}' added successfully!"})
 
